@@ -786,29 +786,47 @@ Core.prototype._secondPassSetUniformValue = function(key, value) {
 Core.prototype._setSlicemapsTexturesByPaths = function(imagesPaths) {
     var allPromises = [];
     var me = this;
-    var textures = [];
+    var samplepath = imagesPaths[0];
+    var link = document.createElement("a");
+    link.href = samplepath;
     var loader = new THREE.TextureLoader();
-    loader.crossOrigin = ''; 
+    var crossorigin_conf = false;
+    if (link.protocol!='file:') {
+        crossorigin_conf = true;
+        loader.crossOrigin = '';
+    }
 
     imagesPaths.forEach( function( image ) {
         allPromises.push( new Promise( function( resolve, reject ) {
-
-            loader.load(image, function (texture) {
+            if (crossorigin_conf) {
+                loader.load(image, function (texture) {
+                    texture.magFilter = THREE.LinearFilter;
+                    texture.minFilter = THREE.LinearFilter;
+                    texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+                    texture.generateMipmaps = false;
+                    texture.flipY = false;
+                    texture.needsUpdate = true;
+                    //textures.push(texture);
+                    resolve( texture );
+                }, 
+                function( xhr ) {
+                },    
+                function (err) {
+                    console.log(err);
+                    console.log("error");
+                });
+            } else {
+                var img = new Image();
+                img.src = image
+                var texture = new THREE.Texture( img );
                 texture.magFilter = THREE.LinearFilter;
                 texture.minFilter = THREE.LinearFilter;
                 texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
                 texture.generateMipmaps = false;
                 texture.flipY = false;
-                texture.needsUpdate = true;
-                //textures.push(texture);
+                texture.needsUpdate = false;
                 resolve( texture );
-            }, 
-            function( xhr ) {
-            },    
-            function (err) {
-                console.log(err);
-                console.log("error");
-            });
+            }
         }));
     });
     
