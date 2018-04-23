@@ -377,17 +377,17 @@ Core.prototype._secondPassSetUniformValue = function(key, value) {
 };
 
 
-Core.prototype._setSlicemapsTextures = function(images) {
+Core.prototype._setSlicemapsTexturesByPaths = function(imagesPaths) {
     var allPromises = [];
     var me = this;
     var textures = [];
     var loader = new THREE.TextureLoader();
     loader.crossOrigin = ''; 
 
-    images.forEach( function( image ) {
+    imagesPaths.forEach( function( image ) {
         allPromises.push( new Promise( function( resolve, reject ) {
 
-            loader.load(image.src, function (texture) {
+            loader.load(image, function (texture) {
                 texture.magFilter = THREE.LinearFilter;
                 texture.minFilter = THREE.LinearFilter;
                 texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
@@ -398,8 +398,6 @@ Core.prototype._setSlicemapsTextures = function(images) {
                 resolve( texture );
             }, 
             function( xhr ) {
-               // Progress callback of TextureLoader
-               // ...
             },    
             function (err) {
                 console.log(err);
@@ -407,15 +405,19 @@ Core.prototype._setSlicemapsTextures = function(images) {
             });
         }));
     });
+    
     Promise.all( allPromises )
         .then( function( promises ) {
             // All textures are now loaded, and this array
             // contains all the materials that you created
+            console.log(promises);
             me._secondPassSetUniformValue("uSliceMaps", promises);
+            me._secondPassSetUniformValue("uSlicemapWidth", promises[0].image.width);
+            //me._slicemaps_textures = promises;
+            //console.log(me._slicemaps_textures);
         }, function( error ) {
             console.error( "Could not load all textures:", error );
         });
-    //this._slicemaps_textures = textures;
 };
 
 
@@ -666,13 +668,9 @@ Core.prototype._setGeometry = function(geometryDimensions, volumeSizes) {
 };
 
 
-Core.prototype.setSlicemapsImages = function(images, imagesPaths) {
-    this._slicemaps_images = images;
-    this._slicemaps_paths = imagesPaths != undefined ? imagesPaths : this._slicemaps_paths;
-    this._setSlicemapsTextures(images);
-    this._secondPassSetUniformValue("uSliceMaps", this._slicemaps_textures);
-    this._slicemaps_width = images[0].width;
-    this._secondPassSetUniformValue("uSlicemapWidth", this._slicemaps_width);
+Core.prototype.setSlicemapsPaths = function(paths) {
+    this._slicemaps_paths = paths;
+    this._setSlicemapsTexturesByPaths(paths);
 };
 
 

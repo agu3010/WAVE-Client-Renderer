@@ -783,17 +783,17 @@ Core.prototype._secondPassSetUniformValue = function(key, value) {
 };
 
 
-Core.prototype._setSlicemapsTextures = function(images) {
+Core.prototype._setSlicemapsTexturesByPaths = function(imagesPaths) {
     var allPromises = [];
     var me = this;
     var textures = [];
     var loader = new THREE.TextureLoader();
     loader.crossOrigin = ''; 
 
-    images.forEach( function( image ) {
+    imagesPaths.forEach( function( image ) {
         allPromises.push( new Promise( function( resolve, reject ) {
 
-            loader.load(image.src, function (texture) {
+            loader.load(image, function (texture) {
                 texture.magFilter = THREE.LinearFilter;
                 texture.minFilter = THREE.LinearFilter;
                 texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
@@ -804,8 +804,6 @@ Core.prototype._setSlicemapsTextures = function(images) {
                 resolve( texture );
             }, 
             function( xhr ) {
-               // Progress callback of TextureLoader
-               // ...
             },    
             function (err) {
                 console.log(err);
@@ -813,15 +811,19 @@ Core.prototype._setSlicemapsTextures = function(images) {
             });
         }));
     });
+    
     Promise.all( allPromises )
         .then( function( promises ) {
             // All textures are now loaded, and this array
             // contains all the materials that you created
+            console.log(promises);
             me._secondPassSetUniformValue("uSliceMaps", promises);
+            me._secondPassSetUniformValue("uSlicemapWidth", promises[0].image.width);
+            //me._slicemaps_textures = promises;
+            //console.log(me._slicemaps_textures);
         }, function( error ) {
             console.error( "Could not load all textures:", error );
         });
-    //this._slicemaps_textures = textures;
 };
 
 
@@ -1072,13 +1074,9 @@ Core.prototype._setGeometry = function(geometryDimensions, volumeSizes) {
 };
 
 
-Core.prototype.setSlicemapsImages = function(images, imagesPaths) {
-    this._slicemaps_images = images;
-    this._slicemaps_paths = imagesPaths != undefined ? imagesPaths : this._slicemaps_paths;
-    this._setSlicemapsTextures(images);
-    this._secondPassSetUniformValue("uSliceMaps", this._slicemaps_textures);
-    this._slicemaps_width = images[0].width;
-    this._secondPassSetUniformValue("uSlicemapWidth", this._slicemaps_width);
+Core.prototype.setSlicemapsPaths = function(paths) {
+    this._slicemaps_paths = paths;
+    this._setSlicemapsTexturesByPaths(paths);
 };
 
 
@@ -4892,88 +4890,15 @@ window.VRC.Core.prototype._shaders.secondPassStevenTri = {
 
         };
 
-        me.setSlicemapsImages = function(images, imagesPaths) {
-            var maxTexSize = me._core.getMaxTextureSize();
-            var maxTexturesNumber = me._core.getMaxTexturesNumber();
-
-            var firstImage = images[0];
-            var imagesNumber = images.length;
-
-            if( imagesNumber > maxTexturesNumber ) {
-                throw Error("Number of slicemaps bigger then number of available texture units. Available texture units: " + maxTexturesNumber);
-            };
-
-            if( (Math.max(firstImage.width, firstImage.height) > maxTexSize) || (imagesNumber > maxTexturesNumber) ) {
-                throw Error("Size of slice bigger than maximum possible on current GPU. Maximum size of texture: " + maxTexSize);
-            };
-
-            me._core.setSlicemapsImages(images, imagesPaths);
-            me._needRedraw = true;
-
+        me.setSlicemapsImages = function(images) {
+            throw Error("Please configure slicemaps_paths instead of slicemaps_images");
         };
-
-        me.uploadSlicemapsImages = function(imagesPaths, userOnLoadImage, userOnLoadImages, userOnError) {
-
-            var downloadImages = function(imagesPaths, onLoadImage, onLoadImages, onError) {
-                var downloadedImages = [];
-                var downloadedImagesNumber = 0;
-
-                try {
-                    for (var imageIndex = 0; imageIndex < imagesPaths.length; imageIndex++) {
-                        var image = new Image();
-                        (function(image, imageIndex) {
-                            image.onload = function() {
-                                downloadedImages[imageIndex] = image;
-                                downloadedImagesNumber++;
-
-                                onLoadImage(image);
-
-                                if(downloadedImagesNumber == imagesPaths.length) {
-                                    onLoadImages(downloadedImages);
-                                };
-
-                            };
-
-                            image.onerror = onError;
-                            image.src = imagesPaths[imageIndex];
-
-                        })(image, imageIndex);
-
-                    };
-                }
-                catch(e) {
-                    onError(e);
-
-                };
-
-            };
-            downloadImages(imagesPaths,
-                function(image) {
-                    // downloaded one of the images
-                    me._onLoadSlicemap.call(image);
-                    if(userOnLoadImage != undefined) userOnLoadImage(image);
-                },
-                function(images) {
-                    // downloaded all images
-                    me.setSlicemapsImages(images, imagesPaths);
-                    me.start();
-
-                    me._onLoadSlicemaps.call(images);
-
-                    if(userOnLoadImages != undefined) userOnLoadImages(images);
-
-                },
-                function(error) {
-                    // error appears
-                    if(userOnError != undefined) {
-                        userOnError(error);
-                    } else {
-                        console.error(error);
-
-                    }
-                }
-            )
-
+        
+        me.setSlicemapsPaths = function(imagesPaths) {
+            me.stop();
+            me._core.setSlicemapsPaths(imagesPaths);
+            me.start();
+            me._needRedraw = true;
         };
 
         me.start = function() {
@@ -5519,22 +5444,7 @@ window.VRC.Core.prototype._shaders.secondPassStevenTri = {
             }
 
             if(config['slicemaps_paths'] != undefined) {
-                me.uploadSlicemapsImages(
-
-                    config['slicemaps_paths'],
-                    function(image) {
-                        if(onLoadImage != undefined) onLoadImage(image);
-                    },
-                    function(images) {
-                        if(config['slices_range'] != undefined) {
-                            me.setSlicesRange( config['slices_range'][0], config['slices_range'][1] );
-                        }
-                        me.stop();
-                        if(onLoadImages != undefined) onLoadImages(images);
-
-                        me.start();
-                    }
-                );
+                me.setSlicemapsPaths(config['slicemaps_paths'] );
             }
 
             if(config['slices_range'] != undefined) {
