@@ -411,6 +411,21 @@
             me._needRedraw = true;
         };
         
+        me.showZoomControlLineX = function(value) {
+            me._core.showZoomControlLineX(value);
+            me._needRedraw = true;
+        };
+        
+        me.showZoomControlLineY = function(value) {
+            me._core.showZoomControlLineY(value);
+            me._needRedraw = true;
+        };
+        
+        me.showZoomControlLineZ = function(value) {
+            me._core.showZoomControlLineZ(value);
+            me._needRedraw = true;
+        };
+        
         me.setGrayMinValue = function(value) {
             if(value > 1.0 || value < 0.0) {
                 throw Error("Gray value should be in range [0.0 - 1.0] !");

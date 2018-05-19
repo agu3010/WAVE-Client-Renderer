@@ -249,6 +249,32 @@ Core.prototype.init = function() {
         this._wireframe_zoom.material.color.set( 0x0000ff );
         this._sceneSecondPass.add( this._wireframe_zoom );
         
+        var control_line_geometry = new THREE.Geometry();
+        control_line_geometry.vertices.push(new THREE.Vector3( -0.5, 0, 0) );
+        control_line_geometry.vertices.push(new THREE.Vector3( 0.5, 0, 0) );
+        this._zoom_control_line_x = new THREE.Line(
+            control_line_geometry, 
+            new THREE.LineBasicMaterial({ color: 0x00ff00 })
+        );
+        control_line_geometry.dispose();
+        
+        control_line_geometry = new THREE.Geometry();
+        control_line_geometry.vertices.push(new THREE.Vector3( 0, -0.5, 0) );
+        control_line_geometry.vertices.push(new THREE.Vector3( 0, 0.5, 0) );
+        this._zoom_control_line_y = new THREE.Line(
+            control_line_geometry, 
+            new THREE.LineBasicMaterial({ color: 0x00ff00 })
+        );
+        control_line_geometry.dispose();
+        
+        control_line_geometry = new THREE.Geometry();
+        control_line_geometry.vertices.push(new THREE.Vector3( 0, 0, -0.5) );
+        control_line_geometry.vertices.push(new THREE.Vector3( 0, 0, 0.5) );
+        this._zoom_control_line_z = new THREE.Line(
+            control_line_geometry, 
+            new THREE.LineBasicMaterial({ color: 0x00ff00 })
+        );
+        
         var sphere = new THREE.SphereGeometry( 0.1 );
         this._light1 = new THREE.PointLight( 0xff0040, 2, 50 );
         this._light1.add( new THREE.Mesh( sphere, new THREE.MeshBasicMaterial( { color: 0xff0040 } ) ) );
@@ -325,6 +351,15 @@ Core.prototype._setUpBox = function(parameters) {
     this._wireframe_zoom.position.x = (parameters.xmax - 0.5) - (width / 2.0 );
     this._wireframe_zoom.position.y = (parameters.ymax - 0.5) - (height / 2.0 );
     this._wireframe_zoom.position.z = (parameters.zmax - 0.5) - (depth / 2.0 );
+    
+    this._zoom_control_line_x.position.y = this._wireframe_zoom.position.y;
+    this._zoom_control_line_x.position.z = this._wireframe_zoom.position.z;
+
+    this._zoom_control_line_y.position.x = this._wireframe_zoom.position.x;
+    this._zoom_control_line_y.position.z = this._wireframe_zoom.position.z;
+    
+    this._zoom_control_line_z.position.x = this._wireframe_zoom.position.x;
+    this._zoom_control_line_z.position.y = this._wireframe_zoom.position.y;
 };
 
 
@@ -374,6 +409,36 @@ Core.prototype.showZoomBox = function(value) {
         this._sceneSecondPass.add( this._wireframe_zoom );
     } else {
         this._sceneSecondPass.remove( this._wireframe_zoom );
+    }
+    this._render.render( this._sceneSecondPass, this._camera );
+};
+
+
+Core.prototype.showZoomControlLineX = function(value) {
+    if (value == true) {
+        this._sceneSecondPass.add( this._zoom_control_line_x );
+    } else {
+        this._sceneSecondPass.remove( this._zoom_control_line_x );
+    }
+    this._render.render( this._sceneSecondPass, this._camera );
+};
+
+
+Core.prototype.showZoomControlLineY = function(value) {
+    if (value == true) {
+        this._sceneSecondPass.add( this._zoom_control_line_y );
+    } else {
+        this._sceneSecondPass.remove( this._zoom_control_line_y );
+    }
+    this._render.render( this._sceneSecondPass, this._camera );
+};
+
+
+Core.prototype.showZoomControlLineZ = function(value) {
+    if (value == true) {
+        this._sceneSecondPass.add( this._zoom_control_line_z );
+    } else {
+        this._sceneSecondPass.remove( this._zoom_control_line_z );
     }
     this._render.render( this._sceneSecondPass, this._camera );
 };
